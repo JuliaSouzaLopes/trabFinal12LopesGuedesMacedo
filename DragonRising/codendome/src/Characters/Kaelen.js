@@ -72,7 +72,6 @@ export default class Kaelen {
         let allClips = [];
         this.anims.forEach(f => { if(f && f.animations) allClips = [...allClips, ...f.animations]; });
 
-        // Mapeamento
         this.animations.idle = allClips.find(a => a.name === 'Idle_A') || allClips.find(a => a.name.toLowerCase().includes('idle'));
         
         const basicClips = this.animMoveBasic ? this.animMoveBasic.animations : [];
@@ -80,10 +79,8 @@ export default class Kaelen {
         this.animations.block = allClips.find(a => a.name.includes('Block_Idle')) || this.animations.idle;
         this.animations.blockHit = allClips.find(a => a.name.includes('Block_Hit'));
         
-        // ESQUIVAS (MovementAdvanced)
         if (this.animMoveAdv && this.animMoveAdv.animations) {
             const adv = this.animMoveAdv.animations;
-            // 2=Trás, 3=Frente, 4=Esq, 5=Dir
             if (adv.length > 5) {
                 this.dodgeClips = {
                     backward: adv[2], forward: adv[3], left: adv[4], right: adv[5]
@@ -91,7 +88,6 @@ export default class Kaelen {
             }
         }
 
-        // ATAQUES
         const wantedAttacks = ["Melee_1H_Attack_Chop", "Melee_1H_Attack_Slice_Diagonal", "Melee_1H_Attack_Slice_Horizontal", "Melee_1H_Attack_Stab"];
         this.jumpAttackClip = allClips.find(a => a.name.includes("Melee_1H_Attack_Jump_Chop"));
         this.groundAttacks = allClips.filter(a => wantedAttacks.some(w => a.name.includes(w))).sort((a, b) => a.name.localeCompare(b.name));
@@ -109,8 +105,6 @@ export default class Kaelen {
 
     attachWeapons() {
         let rightHand, leftHand;
-        const swordPos = { x: 0, y: 0, z: 0.01 };
-        const swordRot = { x: Math.PI, y: 0, z: Math.PI / 2 }; 
         const shieldPos = { x: 0.1, y: 0.05, z: 0 };
         const shieldRot = { x: Math.PI / 2, y: Math.PI / 2, z: Math.PI / 2 };
 
@@ -124,21 +118,34 @@ export default class Kaelen {
             }
         });
 
-        if (rightHand && this.swordResource) {
-            while(rightHand.children.length > 0) rightHand.remove(rightHand.children[0]);
-            const sword = this.swordResource.scene.clone();
-            sword.position.set(swordPos.x, swordPos.y, swordPos.z); 
-            sword.rotation.set(swordRot.x, swordRot.y, swordRot.z); 
-            sword.traverse(c => { if(c.isMesh) { c.castShadow = true; if(this.texture) c.material.map = this.texture; }});
-            rightHand.add(sword);
+        if (rightHand) {
+            const slotR = new THREE.Group();
+            slotR.name = 'handslotr'; 
+            rightHand.add(slotR); 
+
+            if (this.swordResource) {
+                while(rightHand.children.length > 1) rightHand.remove(rightHand.children[1]);
+                const sword = this.swordResource.scene.clone();
+                sword.position.set(0, 0, 0.05); 
+                sword.rotation.set(Math.PI, 0, Math.PI/2);
+                sword.traverse(c => { if(c.isMesh) { c.castShadow = true; if(this.texture) c.material.map = this.texture; }});
+                rightHand.add(sword); 
+            }
         }
-        if (leftHand && this.shieldResource) {
-            while(leftHand.children.length > 0) leftHand.remove(leftHand.children[0]);
-            const shield = this.shieldResource.scene.clone();
-            shield.position.set(shieldPos.x, shieldPos.y, shieldPos.z); 
-            shield.rotation.set(shieldRot.x, shieldRot.y, shieldRot.z);
-            shield.traverse(c => { if(c.isMesh) { c.castShadow = true; if(this.texture) c.material.map = this.texture; }});
-            leftHand.add(shield);
+
+        if (leftHand) {
+            const slotL = new THREE.Group();
+            slotL.name = 'handslotl';
+            leftHand.add(slotL);
+
+            if (this.shieldResource) {
+                while(leftHand.children.length > 1) leftHand.remove(leftHand.children[1]);
+                const shield = this.shieldResource.scene.clone();
+                shield.position.set(shieldPos.x, shieldPos.y, shieldPos.z); 
+                shield.rotation.set(shieldRot.x, shieldRot.y, shieldRot.z);
+                shield.traverse(c => { if(c.isMesh) { c.castShadow = true; if(this.texture) c.material.map = this.texture; }});
+                leftHand.add(shield);
+            }
         }
     }
 
@@ -181,11 +188,7 @@ export default class Kaelen {
 
     performDodge() {
         if (this.state === 'dodge' || this.state === 'attack' || !this.dodgeClips) return;
-        
-        // --- CORREÇÃO 1: Se não apertar nada, não esquiva ---
-        if (!this.input.keys.forward && !this.input.keys.backward && !this.input.keys.left && !this.input.keys.right) {
-            return;
-        }
+        if (!this.input.keys.forward && !this.input.keys.backward && !this.input.keys.left && !this.input.keys.right) return;
 
         this.state = 'dodge';
         this.isInvulnerable = true;
@@ -193,42 +196,13 @@ export default class Kaelen {
         let clip = this.dodgeClips.forward;
         let dodgeDir = new THREE.Vector3(0, 0, 0); 
 
-        // --- CORREÇÃO 2: Vetores Corrigidos ---
-        // Forward é -Z (frente da câmera)
-        // Backward é +Z
-        // Left é -X
-        // Right é +X
-        if (this.input.keys.forward) { 
-            clip = this.dodgeClips.forward; 
-            dodgeDir.set(0, 0, -1); // Frente
-        }
-        else if (this.input.keys.backward) { 
-            clip = this.dodgeClips.backward; 
-            dodgeDir.set(0, 0, 1); // Trás
-        } 
-        else if (this.input.keys.left) { 
-            clip = this.dodgeClips.left; 
-            dodgeDir.set(-1, 0, 0); // Esquerda
-        } 
-        else if (this.input.keys.right) { 
-            clip = this.dodgeClips.right; 
-            dodgeDir.set(1, 0, 0); // Direita
-        }
+        if (this.input.keys.forward) { clip = this.dodgeClips.forward; dodgeDir.set(0, 0, -1); }
+        else if (this.input.keys.backward) { clip = this.dodgeClips.backward; dodgeDir.set(0, 0, 1); } 
+        else if (this.input.keys.left) { clip = this.dodgeClips.left; dodgeDir.set(-1, 0, 0); } 
+        else if (this.input.keys.right) { clip = this.dodgeClips.right; dodgeDir.set(1, 0, 0); }
 
-        // Importante: Aplicar a rotação do modelo
-        // Se o modelo gira, "frente" muda. O vetor local deve ser alinhado com a rotação do mundo?
-        // NÃO! Se a câmera é fixa, W deve ser sempre "Fundo da tela".
-        // Se usamos movimentação relativa à câmera (o que estamos fazendo no handleMovement),
-        // a esquiva deve seguir a mesma lógica.
-        // O dodgeDir acima já está em coordenadas "globais" relativas ao input.
-        
-        // Toca animação
         this.playAnimation(clip, true, 0.1, 1.3);
-        
-        // Impulso forte na direção da tecla
-        // Normalizamos para garantir velocidade constante na diagonal se houver
         if(dodgeDir.lengthSq() > 0) dodgeDir.normalize();
-        
         this.lungeVelocity.copy(dodgeDir).multiplyScalar(12.0); 
     }
 
@@ -242,8 +216,6 @@ export default class Kaelen {
             }
         }
         this.currentHealth -= amount;
-        const bar = document.getElementById('player-health-fill');
-        if (bar) bar.style.width = `${Math.max(0, (this.currentHealth / this.maxHealth) * 100)}%`;
         
         this.model.traverse(c => { if (c.isMesh) c.material.emissive.setHex(0xff0000); });
         setTimeout(() => { if(this.model) this.model.traverse(c => { if(c.isMesh) c.material.emissive.setHex(0x000000); }); }, 200);
@@ -258,14 +230,56 @@ export default class Kaelen {
         setTimeout(() => location.reload(), 2000);
     }
 
-    update(deltaTime, mousePos, enemies) {
+    // --- SISTEMA DE COLISÃO FÍSICA (Bounding Box) ---
+    getBoundingBox() {
+        const box = new THREE.Box3();
+        // CAIXA MAIS FINA: Reduzi X e Z para 0.8 (era 1.2). 
+        // Isso permite passar em portas estreitas sem travar.
+        box.setFromCenterAndSize(
+            this.model.position.clone().add(new THREE.Vector3(0, 1.5, 0)), 
+            new THREE.Vector3(0.8, 3.0, 0.8) 
+        );
+        return box;
+    }
+
+    checkCollision(playerBox, mapBuilder) {
+        if (!mapBuilder || !mapBuilder.walls) return false;
+
+        for (const wall of mapBuilder.walls) {
+            const wallBox = new THREE.Box3().setFromObject(wall);
+            
+            // TRUQUE DE HITBOX:
+            // Reduzimos a caixa da parede em 0.2 unidades em cada lado.
+            // Isso ignora relevos da pedra e tochas que poderiam travar o jogador.
+            wallBox.expandByScalar(-0.2);
+            
+            if (playerBox.intersectsBox(wallBox)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    update(deltaTime, mousePos, enemies, mapBuilder) {
         if (!this.model || !this.mixer) return;
         this.mixer.update(deltaTime);
         if (this.isDead) return;
 
+        // Movimento de Impulso (Ataque/Esquiva) com Colisão
         if (this.lungeVelocity.lengthSq() > 0.1) {
             const moveAmount = this.lungeVelocity.clone().multiplyScalar(deltaTime);
-            this.model.position.add(moveAmount);
+            
+            // Testa colisão antes de aplicar impulso
+            const futurePos = this.model.position.clone().add(moveAmount);
+            const futureBox = this.getBoundingBox();
+            futureBox.translate(moveAmount);
+
+            if(!this.checkCollision(futureBox, mapBuilder)) {
+                this.model.position.add(moveAmount);
+            } else {
+                // Se bateu, para o impulso
+                this.lungeVelocity.set(0,0,0);
+            }
             this.lungeVelocity.multiplyScalar(Math.max(0, 1 - this.lungeFriction * deltaTime));
         } else {
             this.lungeVelocity.set(0,0,0);
@@ -291,7 +305,7 @@ export default class Kaelen {
         }
 
         if (this.state !== 'dodge') {
-            this.handleMovement(deltaTime, enemies);
+            this.handleMovement(deltaTime, enemies, mapBuilder);
             this.handleRotation(mousePos);
         }
     }
@@ -300,7 +314,7 @@ export default class Kaelen {
         if (mousePos) this.model.lookAt(mousePos.x, this.model.position.y, mousePos.z);
     }
 
-    handleMovement(deltaTime, enemies, mapBuilder) { // <--- Recebe mapBuilder
+    handleMovement(deltaTime, enemies, mapBuilder) {
         let moveX = 0;
         let moveZ = 0;
 
@@ -319,62 +333,44 @@ export default class Kaelen {
         let currentSpeed = this.speed;
         if (this.state === 'attack') currentSpeed *= 0.5;
 
-        // Normaliza vetor
         const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
         moveX /= length; 
         moveZ /= length;
 
-        // --- PREVISÃO DE COLISÃO (CENÁRIO) ---
-        const nextX = this.model.position.x + (moveX * currentSpeed * deltaTime);
-        const nextZ = this.model.position.z + (moveZ * currentSpeed * deltaTime);
+        const stepX = moveX * currentSpeed * deltaTime;
+        const stepZ = moveZ * currentSpeed * deltaTime;
 
-        let wallCollision = false;
+        // --- COLISÃO NO EIXO X ---
+        const originalPos = this.model.position.clone();
+        this.model.position.x += stepX;
         
-        if (mapBuilder) {
-            // Converte posição do mundo (3D) para coordenadas do Grid (Array)
-            // O tileSize deve vir do MapBuilder. Se não tiver acesso direto, use o valor padrão (2)
-            const tileSize = mapBuilder.tileSize || 2; 
-            
-            // Precisamos inverter a lógica de "spawn" do MapBuilder para achar o índice
-            const offsetX = (mapBuilder.levelData[0].length * tileSize) / 2;
-            const offsetZ = (mapBuilder.levelData.length * tileSize) / 2;
-
-            const gridX = Math.floor((nextX + offsetX + (tileSize/2)) / tileSize);
-            const gridZ = Math.floor((nextZ + offsetZ + (tileSize/2)) / tileSize);
-
-            // Verifica se está dentro dos limites do array
-            if (gridZ >= 0 && gridZ < mapBuilder.levelData.length && 
-                gridX >= 0 && gridX < mapBuilder.levelData[0].length) {
-                
-                const tileType = mapBuilder.levelData[gridZ][gridX];
-                
-                // Se o tile for 2 (Parede) ou 3 (Coluna) ou 4 (Porta fechada)
-                if (tileType === 2 || tileType === 3 || tileType === 4) {
-                    wallCollision = true;
-                }
-            }
+        // Se bateu, desfaz movimento X
+        if (this.checkCollision(this.getBoundingBox(), mapBuilder)) {
+            this.model.position.x = originalPos.x;
         }
 
-        // --- PREVISÃO DE COLISÃO (INIMIGOS) ---
-        const nextPos = new THREE.Vector3(nextX, this.model.position.y, nextZ);
-        let enemyCollision = false;
-        
+        // --- COLISÃO NO EIXO Z ---
+        // Nota: Testa Z independentemente de X para permitir "deslizar" na parede
+        const posAfterX = this.model.position.clone();
+        this.model.position.z += stepZ;
+
+        // Se bateu, desfaz movimento Z
+        if (this.checkCollision(this.getBoundingBox(), mapBuilder)) {
+            this.model.position.z = posAfterX.z;
+        }
+
+        // Colisão Inimigos (Mantida simples por distância)
         if (enemies) {
             for (const enemy of enemies) {
                 if(enemy.isDead) continue;
-                if (nextPos.distanceTo(enemy.model.position) < 0.8) {
-                    enemyCollision = true;
+                if (this.model.position.distanceTo(enemy.model.position) < 0.8) {
+                    // Empurra de volta
+                    this.model.position.copy(originalPos); 
                     break;
                 }
             }
         }
 
-        // Só move se não bater em nada
-        if (!wallCollision && !enemyCollision) {
-            this.model.position.x = nextX;
-            this.model.position.z = nextZ;
-            
-            if (this.state !== 'attack') this.playAnimation('run');
-        }
+        if (this.state !== 'attack') this.playAnimation('run');
     }
 }
