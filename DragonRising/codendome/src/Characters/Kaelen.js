@@ -14,25 +14,25 @@ export default class Kaelen {
         this.animMoveBasic = resources.items.animMoveBasic;
         this.animMoveAdv = resources.items.animMoveAdv;
         this.animGeneral = resources.items.animGeneral;
-        
+
         this.anims = [
             resources.items.animMelee,
             resources.items.animMoveBasic,
             resources.items.animMoveAdv,
             resources.items.animGeneral
         ];
-        
+
         this.speed = 5.0;
         this.maxHealth = 20;
         this.currentHealth = this.maxHealth;
-        this.attackRange = 2.5; 
+        this.attackRange = 2.5;
         this.scale = new THREE.Vector3(0.7, 0.8, 0.7);
 
-        this.state = 'idle'; 
+        this.state = 'idle';
         this.comboIndex = -1;
         this.isDead = false;
         this.isInvulnerable = false;
-        
+
         this.lungeVelocity = new THREE.Vector3();
         this.lungeFriction = 5.0;
 
@@ -44,12 +44,12 @@ export default class Kaelen {
     }
 
     setModel() {
-        if(!this.resource) return;
+        if (!this.resource) return;
 
         this.model = this.resource.scene;
         this.model.scale.copy(this.scale);
         this.model.position.set(0, 0, 0);
-        
+
         if (this.texture) {
             this.texture.colorSpace = THREE.SRGBColorSpace;
             this.texture.magFilter = THREE.NearestFilter;
@@ -70,15 +70,15 @@ export default class Kaelen {
 
         this.mixer = new THREE.AnimationMixer(this.model);
         let allClips = [];
-        this.anims.forEach(f => { if(f && f.animations) allClips = [...allClips, ...f.animations]; });
+        this.anims.forEach(f => { if (f && f.animations) allClips = [...allClips, ...f.animations]; });
 
         this.animations.idle = allClips.find(a => a.name === 'Idle_A') || allClips.find(a => a.name.toLowerCase().includes('idle'));
-        
+
         const basicClips = this.animMoveBasic ? this.animMoveBasic.animations : [];
         this.animations.run = basicClips.find(a => a.name === 'Run_A') || allClips.find(a => a.name.toLowerCase().includes('run'));
         this.animations.block = allClips.find(a => a.name.includes('Block_Idle')) || this.animations.idle;
         this.animations.blockHit = allClips.find(a => a.name.includes('Block_Hit'));
-        
+
         if (this.animMoveAdv && this.animMoveAdv.animations) {
             const adv = this.animMoveAdv.animations;
             if (adv.length > 5) {
@@ -100,7 +100,7 @@ export default class Kaelen {
             }
         });
 
-        if(this.animations.idle) this.playAnimation('idle');
+        if (this.animations.idle) this.playAnimation('idle');
     }
 
     attachWeapons() {
@@ -120,16 +120,16 @@ export default class Kaelen {
 
         if (rightHand) {
             const slotR = new THREE.Group();
-            slotR.name = 'handslotr'; 
-            rightHand.add(slotR); 
+            slotR.name = 'handslotr';
+            rightHand.add(slotR);
 
             if (this.swordResource) {
-                while(rightHand.children.length > 1) rightHand.remove(rightHand.children[1]);
+                while (rightHand.children.length > 1) rightHand.remove(rightHand.children[1]);
                 const sword = this.swordResource.scene.clone();
-                sword.position.set(0, 0, 0.05); 
-                sword.rotation.set(Math.PI, 0, Math.PI/2);
-                sword.traverse(c => { if(c.isMesh) { c.castShadow = true; if(this.texture) c.material.map = this.texture; }});
-                rightHand.add(sword); 
+                sword.position.set(0, 0, 0.05);
+                sword.rotation.set(Math.PI, 0, Math.PI / 2);
+                sword.traverse(c => { if (c.isMesh) { c.castShadow = true; if (this.texture) c.material.map = this.texture; } });
+                rightHand.add(sword);
             }
         }
 
@@ -139,11 +139,11 @@ export default class Kaelen {
             leftHand.add(slotL);
 
             if (this.shieldResource) {
-                while(leftHand.children.length > 1) leftHand.remove(leftHand.children[1]);
+                while (leftHand.children.length > 1) leftHand.remove(leftHand.children[1]);
                 const shield = this.shieldResource.scene.clone();
-                shield.position.set(shieldPos.x, shieldPos.y, shieldPos.z); 
+                shield.position.set(shieldPos.x, shieldPos.y, shieldPos.z);
                 shield.rotation.set(shieldRot.x, shieldRot.y, shieldRot.z);
-                shield.traverse(c => { if(c.isMesh) { c.castShadow = true; if(this.texture) c.material.map = this.texture; }});
+                shield.traverse(c => { if (c.isMesh) { c.castShadow = true; if (this.texture) c.material.map = this.texture; } });
                 leftHand.add(shield);
             }
         }
@@ -177,7 +177,7 @@ export default class Kaelen {
             this.comboIndex = (this.comboIndex + 1) % this.groundAttacks.length;
             clipToPlay = this.groundAttacks[this.comboIndex];
         }
-        if(!clipToPlay) clipToPlay = this.animations.idle;
+        if (!clipToPlay) clipToPlay = this.animations.idle;
         this.playAnimation(clipToPlay, true, 0.05, 1.4);
         const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.model.rotation.y);
         let force = clipToPlay.name.includes("Jump") ? 8.0 : 5.0;
@@ -192,33 +192,33 @@ export default class Kaelen {
 
         this.state = 'dodge';
         this.isInvulnerable = true;
-        
+
         let clip = this.dodgeClips.forward;
-        let dodgeDir = new THREE.Vector3(0, 0, 0); 
+        let dodgeDir = new THREE.Vector3(0, 0, 0);
 
         if (this.input.keys.forward) { clip = this.dodgeClips.forward; dodgeDir.set(0, 0, -1); }
-        else if (this.input.keys.backward) { clip = this.dodgeClips.backward; dodgeDir.set(0, 0, 1); } 
-        else if (this.input.keys.left) { clip = this.dodgeClips.left; dodgeDir.set(-1, 0, 0); } 
+        else if (this.input.keys.backward) { clip = this.dodgeClips.backward; dodgeDir.set(0, 0, 1); }
+        else if (this.input.keys.left) { clip = this.dodgeClips.left; dodgeDir.set(-1, 0, 0); }
         else if (this.input.keys.right) { clip = this.dodgeClips.right; dodgeDir.set(1, 0, 0); }
 
         this.playAnimation(clip, true, 0.1, 1.3);
-        if(dodgeDir.lengthSq() > 0) dodgeDir.normalize();
-        this.lungeVelocity.copy(dodgeDir).multiplyScalar(12.0); 
+        if (dodgeDir.lengthSq() > 0) dodgeDir.normalize();
+        this.lungeVelocity.copy(dodgeDir).multiplyScalar(12.0);
     }
 
     takeDamage(amount) {
         if (this.isDead || this.isInvulnerable) return;
         if (this.state === 'block') {
             amount = Math.ceil(amount * 0.2);
-            if(this.animations.blockHit) {
+            if (this.animations.blockHit) {
                 const action = this.mixer.clipAction(this.animations.blockHit);
                 action.reset().setLoop(THREE.LoopOnce).play();
             }
         }
         this.currentHealth -= amount;
-        
+
         this.model.traverse(c => { if (c.isMesh) c.material.emissive.setHex(0xff0000); });
-        setTimeout(() => { if(this.model) this.model.traverse(c => { if(c.isMesh) c.material.emissive.setHex(0x000000); }); }, 200);
+        setTimeout(() => { if (this.model) this.model.traverse(c => { if (c.isMesh) c.material.emissive.setHex(0x000000); }); }, 200);
 
         if (this.currentHealth <= 0) this.die();
     }
@@ -226,7 +226,7 @@ export default class Kaelen {
     die() {
         this.isDead = true;
         const death = this.animGeneral.animations.find(a => a.name.includes('Death_A'));
-        if(death) this.playAnimation(death, true);
+        if (death) this.playAnimation(death, true);
         setTimeout(() => location.reload(), 2000);
     }
 
@@ -236,8 +236,8 @@ export default class Kaelen {
         // CAIXA MAIS FINA: Reduzi X e Z para 0.8 (era 1.2). 
         // Isso permite passar em portas estreitas sem travar.
         box.setFromCenterAndSize(
-            this.model.position.clone().add(new THREE.Vector3(0, 1.5, 0)), 
-            new THREE.Vector3(0.8, 3.0, 0.8) 
+            this.model.position.clone().add(new THREE.Vector3(0, 1.5, 0)),
+            new THREE.Vector3(0.8, 3.0, 0.8)
         );
         return box;
     }
@@ -247,12 +247,12 @@ export default class Kaelen {
 
         for (const wall of mapBuilder.walls) {
             const wallBox = new THREE.Box3().setFromObject(wall);
-            
+
             // TRUQUE DE HITBOX:
             // Reduzimos a caixa da parede em 0.2 unidades em cada lado.
             // Isso ignora relevos da pedra e tochas que poderiam travar o jogador.
             wallBox.expandByScalar(-0.2);
-            
+
             if (playerBox.intersectsBox(wallBox)) {
                 return true;
             }
@@ -260,61 +260,37 @@ export default class Kaelen {
         return false;
     }
 
-    update(deltaTime, mousePos, enemies, mapBuilder) {
+   update(deltaTime, mousePos, enemies, mapBuilder) {
         if (!this.model || !this.mixer) return;
         this.mixer.update(deltaTime);
         if (this.isDead) return;
 
-        // Movimento de Impulso (Ataque/Esquiva) com Colisão
-        if (this.lungeVelocity.lengthSq() > 0.1) {
-            const moveAmount = this.lungeVelocity.clone().multiplyScalar(deltaTime);
-            
-            // Testa colisão antes de aplicar impulso
-            const futurePos = this.model.position.clone().add(moveAmount);
-            const futureBox = this.getBoundingBox();
-            futureBox.translate(moveAmount);
-
-            if(!this.checkCollision(futureBox, mapBuilder)) {
-                this.model.position.add(moveAmount);
-            } else {
-                // Se bateu, para o impulso
-                this.lungeVelocity.set(0,0,0);
-            }
-            this.lungeVelocity.multiplyScalar(Math.max(0, 1 - this.lungeFriction * deltaTime));
-        } else {
-            this.lungeVelocity.set(0,0,0);
+        // 1. CHECAGEM DE AÇÕES (Restaurada)
+        // Ataque: Clique Esquerdo (Básico) ou Espaço (Pulo/Ataque Forte)
+        if (this.input.mouse.leftClick || this.input.keys.jump) {
+            this.performAttack();
         }
 
-        if (this.input.keys.dodge && this.state !== 'dodge') {
+        // Esquiva: Shift
+        if (this.input.keys.dodge) {
             this.performDodge();
-            return;
-        }
-        if (this.input.mouse.leftClick) {
-            this.input.mouse.leftClick = false; 
-            return this.performAttack();
-        }
-        if (this.input.mouse.rightClick && this.state !== 'attack' && this.state !== 'dodge') {
-            if (this.state !== 'block') {
-                this.state = 'block';
-                this.playAnimation(this.animations.block, false, 0.1);
-            }
-            this.handleRotation(mousePos);
-            return;
-        } else if (!this.input.mouse.rightClick && this.state === 'block') {
-            this.state = 'idle';
         }
 
+        // 2. MOVIMENTO E ROTAÇÃO
+        // Só move se não estiver no meio de uma esquiva
         if (this.state !== 'dodge') {
             this.handleMovement(deltaTime, enemies, mapBuilder);
             this.handleRotation(mousePos);
         }
     }
 
+
     handleRotation(mousePos) {
         if (mousePos) this.model.lookAt(mousePos.x, this.model.position.y, mousePos.z);
     }
 
     handleMovement(deltaTime, enemies, mapBuilder) {
+        // 1. Calcula a direção baseada nas teclas (moveDirection)
         let moveX = 0;
         let moveZ = 0;
 
@@ -323,54 +299,86 @@ export default class Kaelen {
         if (this.input.keys.left) moveX -= 1;
         if (this.input.keys.right) moveX += 1;
 
+        // Se não estiver apertando nada, toca idle e retorna
         if (moveX === 0 && moveZ === 0) {
-            if (this.state === 'idle' || (this.state !== 'attack' && this.state !== 'block')) {
+            if (this.state === 'idle' || (this.state !== 'attack' && this.state !== 'block' && this.state !== 'dodge')) {
                 this.playAnimation('idle');
             }
             return;
         }
 
+        // Cria o vetor moveDirection que estava faltando
+        const moveDirection = new THREE.Vector3(moveX, 0, moveZ).normalize();
+
+        // 2. Define velocidade
         let currentSpeed = this.speed;
         if (this.state === 'attack') currentSpeed *= 0.5;
 
-        const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
-        moveX /= length; 
-        moveZ /= length;
+        // 3. Calcula onde o jogador QUER ir (Posição Futura)
+        const displacement = moveDirection.multiplyScalar(currentSpeed * deltaTime);
+        const nextPos = this.model.position.clone().add(displacement);
 
-        const stepX = moveX * currentSpeed * deltaTime;
-        const stepZ = moveZ * currentSpeed * deltaTime;
+        // 4. Colisão com Paredes (Lógica de Deslizar / Sliding)
+        if (mapBuilder && mapBuilder.walls.length > 0) {
+            const playerRadius = 0.4; // Raio do corpo do herói (ajuste se precisar)
 
-        // --- COLISÃO NO EIXO X ---
-        const originalPos = this.model.position.clone();
-        this.model.position.x += stepX;
-        
-        // Se bateu, desfaz movimento X
-        if (this.checkCollision(this.getBoundingBox(), mapBuilder)) {
-            this.model.position.x = originalPos.x;
-        }
+            // Usamos o centro do corpo para calcular colisão, não o pé
+            const playerCenter = nextPos.clone().add(new THREE.Vector3(0, 1.5, 0));
 
-        // --- COLISÃO NO EIXO Z ---
-        // Nota: Testa Z independentemente de X para permitir "deslizar" na parede
-        const posAfterX = this.model.position.clone();
-        this.model.position.z += stepZ;
+            for (const wall of mapBuilder.walls) {
+                // Cria uma caixa matemática para a parede
+                const wallBox = new THREE.Box3().setFromObject(wall);
 
-        // Se bateu, desfaz movimento Z
-        if (this.checkCollision(this.getBoundingBox(), mapBuilder)) {
-            this.model.position.z = posAfterX.z;
-        }
+                // Encontra o ponto na parede mais próximo do centro do jogador
+                const closestPoint = new THREE.Vector3();
+                wallBox.clampPoint(playerCenter, closestPoint);
 
-        // Colisão Inimigos (Mantida simples por distância)
-        if (enemies) {
-            for (const enemy of enemies) {
-                if(enemy.isDead) continue;
-                if (this.model.position.distanceTo(enemy.model.position) < 0.8) {
-                    // Empurra de volta
-                    this.model.position.copy(originalPos); 
-                    break;
+                // Calculamos a distância apenas no plano horizontal (X e Z)
+                // Isso evita que o chão ou teto empurrem o jogador
+                const flatPlayer = new THREE.Vector3(playerCenter.x, 0, playerCenter.z);
+                const flatClosest = new THREE.Vector3(closestPoint.x, 0, closestPoint.z);
+
+                const distance = flatPlayer.distanceTo(flatClosest);
+
+                // Se a distância for menor que o raio, houve colisão
+                if (distance < playerRadius) {
+                    // Calcula a direção para empurrar o jogador para fora (Normal)
+                    const pushDir = new THREE.Vector3().subVectors(flatPlayer, flatClosest).normalize();
+
+                    // Se estiver exatamente dentro (distancia 0), empurra pra qualquer lado
+                    if (distance === 0) pushDir.set(1, 0, 0);
+
+                    const overlap = playerRadius - distance;
+
+                    // Aplica o empurrão na posição futura (Desliza suavemente)
+                    nextPos.add(pushDir.multiplyScalar(overlap));
+
+                    // Atualiza o centro para a próxima verificação de parede
+                    playerCenter.add(pushDir.multiplyScalar(overlap));
                 }
             }
         }
 
-        if (this.state !== 'attack') this.playAnimation('run');
+        // 5. Colisão com Inimigos (Simples, para não atravessar)
+        if (enemies) {
+            for (const enemy of enemies) {
+                if (enemy.isDead || !enemy.model) continue;
+                const dist = nextPos.distanceTo(enemy.model.position);
+                const minDist = 0.8;
+                if (dist < minDist) {
+                    const pushDir = new THREE.Vector3().subVectors(nextPos, enemy.model.position).normalize();
+                    const pushAmt = minDist - dist;
+                    nextPos.add(pushDir.multiplyScalar(pushAmt));
+                }
+            }
+        }
+
+        // 6. Aplica a posição final calculada
+        this.model.position.copy(nextPos);
+
+        // 7. Animação de corrida
+        if (this.state !== 'attack' && this.state !== 'block') {
+            this.playAnimation('run');
+        }
     }
 }
